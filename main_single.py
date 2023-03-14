@@ -287,8 +287,6 @@ class ReplayAgent:
                     # assert game_length == timestep
                     agent_state = self.model.reset(1)  # reset
                     total_loss = 0
-
-
                     for i in range(game_length):
 
                         action_soft, action, value, agent_state, predicted_goal, predicted_location, rollout = self.model(
@@ -299,14 +297,17 @@ class ReplayAgent:
                         loss_fn = tf.keras.losses.MeanSquaredError()
                         value_loss = loss_fn(tg_targets[i+1], value)
                         # print("vale gradient",tf.gradients(value_loss,self.model.variables))
+                        # print(value_loss)
 
 
                         advantage = tg_targets[i+1]- value  # check!
-                        print("advantage",advantage)
+                        # print("advantage",advantage)
 
                         ce_loss = tf.keras.losses.CategoricalCrossentropy()
                         policy_loss = ce_loss(action_onehot_batch[i+1], action_soft,
                                               sample_weight=advantage)  # current action
+                        print(policy_loss)
+
                         # print("polic gradient",tf.gradients(policy_loss,self.model.variables))
                         ## entropy loss
                         entropy_loss = tf.reduce_sum(action_soft * tf.math.log(action_soft))
