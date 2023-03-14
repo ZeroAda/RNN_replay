@@ -86,7 +86,6 @@ class A2CMetaNetwork(tf.keras.Model):
         # agent_state = [agent_state_c ,agent_state_h]
         action_soft = self.policy_layer(out)
         # action_soft = tf.cast(action_soft, tf.float63
-        action_soft = action_soft / tf.reduce_sum(action_soft) # 1.16
         action_soft_r = np.array(action_soft).astype('float64')
         action_soft_r = action_soft_r / np.sum(action_soft_r)
 

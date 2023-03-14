@@ -259,6 +259,26 @@ class ReplayAgent:
                     action_soft_batch.append(tf.one_hot(action,depth=4))
 
             discounted_reward = cal_discounted_reward(reward_batch, gamma)
+            # transform variable
+            action_onehot_batch = tf.one_hot(action_batch, depth=4)  # 52,1,4
+            action_onehot_batch = np.reshape(action_onehot_batch,
+                                             [len(action_onehot_batch), 1, 4])
+            tg_targets = tf.convert_to_tensor(discounted_reward)
+            tg_targets = np.reshape(tg_targets, [tg_targets.shape[0], 1, 1])
+            state_batch = np.reshape(state_batch, [len(state_batch), 1, 16])
+            true_goal_batch = np.reshape(true_goal_batch, [len(true_goal_batch), 1, 16])
+
+            print("tg_targets", tg_targets)
+            # print("value", value_batch)
+            print("statebatch", state_batch)
+            # print("predicted location", predicted_location_batch)  # 51,1,16
+            print("true goal", true_goal_batch)
+            # print("predicted goal", predicted_goal_batch)
+            print("action_soft", action_soft_batch)  # action soft batch: [51,1,4]
+            print("discount", discounted_reward)
+            print("action one hot", action_onehot_batch)  # 51,1,4
+            print("model variables", self.model.variables)
+
             if train == True:  # train every episode
                 with tf.GradientTape() as tape:
                     tape.watch(self.model.variables)
@@ -267,25 +287,7 @@ class ReplayAgent:
                     # assert game_length == timestep
                     agent_state = self.model.reset(1)  # reset
                     total_loss = 0
-                    #transform variable
-                    action_onehot_batch = tf.one_hot(action_batch, depth=4)  # 52,1,4
-                    action_onehot_batch = np.reshape(action_onehot_batch,
-                                                     [len(action_onehot_batch), 1, 4])
-                    tg_targets = tf.convert_to_tensor(discounted_reward)
-                    tg_targets = np.reshape(tg_targets, [tg_targets.shape[0], 1, 1])
-                    state_batch = np.reshape(state_batch, [len(state_batch), 1, 16])
-                    true_goal_batch = np.reshape(true_goal_batch, [len(true_goal_batch), 1, 16])
 
-                    print("tg_targets", tg_targets)
-                    # print("value", value_batch)
-                    print("statebatch", state_batch)
-                    # print("predicted location", predicted_location_batch)  # 51,1,16
-                    print("true goal", true_goal_batch)
-                    # print("predicted goal", predicted_goal_batch)
-                    print("action_soft", action_soft_batch)  # action soft batch: [51,1,4]
-                    print("discount", discounted_reward)
-                    print("action one hot", action_onehot_batch)  # 51,1,4
-                    print("model variables", self.model.variables)
 
                     for i in range(game_length):
 
@@ -293,37 +295,27 @@ class ReplayAgent:
                                     state_batch[i], reward_batch[i], action_onehot_batch[i], time_batch[i] / 20000, self.env.wall,
                                     augment_batch[i], agent_state)
 
-
-                        # value loss
-                        # value_loss = loss_fn(tf.stop_gradient(tg_targets[1:]), value_batch[:]) # 50,1,1 vs 50,1,1
+                        # value loss & policy loss
                         loss_fn = tf.keras.losses.MeanSquaredError()
-                        value_loss = loss_fn(tf.stop_gradient(tg_targets[i+1]), value)
+                        value_loss = loss_fn(tg_targets[i+1], value)
+                        # print("vale gradient",tf.gradients(value_loss,self.model.variables))
+
 
                         advantage = tg_targets[i+1]- value  # check!
                         print("advantage",advantage)
 
                         ce_loss = tf.keras.losses.CategoricalCrossentropy()
-                        # policy_loss = ce_loss(action_onehot_batch[1:], action_soft_batch[1:],
-                        #                       sample_weight=tf.stop_gradient(advantage))  # current action
                         policy_loss = ce_loss(action_onehot_batch[i+1], action_soft,
-                                              sample_weight=tf.stop_gradient(advantage))  # current action
+                                              sample_weight=advantage)  # current action
+                        # print("polic gradient",tf.gradients(policy_loss,self.model.variables))
                         ## entropy loss
                         entropy_loss = tf.reduce_sum(action_soft * tf.math.log(action_soft))
                         ## internal world loss
-
-                        # if state_batch[i+1] != goal_onehot: # if not reach the goal
                         ce_loss = tf.keras.losses.CategoricalCrossentropy() #50,1,16 vs 50,1,16
-
-                        # internal_loss = ce_loss(state_batch[1:], predicted_location_batch) + ce_loss(true_goal_batch[1:], predicted_goal_batch)
                         internal_loss = ce_loss(state_batch[i+1], predicted_location) + ce_loss(true_goal_batch[i+1], predicted_goal)
 
-                        ## total loss
-                        # policy_loss = tf.cast(policy_loss, tf.float32)
-                        # entropy_loss = tf.cast(entropy_loss, tf.float32)
-                        # value_loss = tf.cast(value_loss, tf.float32)
-                        # internal_loss = tf.cast(internal_loss, tf.float32)
-
                         total_loss += policy_loss - entropy_loss * 0.05 + value_loss * 0.05 + internal_loss * 0.5
+                        # total_loss += policy_loss
 
                 total_loss /= game_length
                 grad = tape.gradient(total_loss, self.model.variables)
