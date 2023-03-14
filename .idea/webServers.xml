@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="e1984b1c-c541-4807-af23-f1cc88a5343d" name="cibr">
+        <fileTransfer accessType="SFTP" host="10.12.100.88" port="22" sshConfigId="55954b74-4a6c-44ba-9c1a-c53293b0f732" sshConfig="lichenyi@10.12.100.88:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
