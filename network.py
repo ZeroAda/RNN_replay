@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras.layers import Input, Dense, LSTMCell, Flatten
+from tensorflow.keras.layers import Input, Dense, LSTMCell, Flatten, LSTM
 import numpy as np
 import dgl
 from dgl.nn import GraphConv
@@ -24,7 +24,9 @@ class A2CMetaNetwork(tf.keras.Model):
         #######################################################
         # lstm
         self.units = units
-        self.lstm_core = LSTMCell(self.units)
+        # self.lstm_core = LSTMCell(self.units)
+        self.lstm_core = LSTM(self.units,return_sequences=True,return_state=True,stateful=True)
+
         # output two model network
         self.policy_layer = Dense(self.num_actions,
                                   activation=tf.keras.activations.softmax)
@@ -47,14 +49,14 @@ class A2CMetaNetwork(tf.keras.Model):
         # if only one batch
 
         ## runable
-        # src, dst = np.nonzero(wall)
-        # g = dgl.graph((src, dst))
-        # g = dgl.add_self_loop(g)
-        # # feat = torch.from_numpy(np.ones([16 ,16])).float()
-        # feat = tf.ones([16,16],tf.float32)
-        # wall_embed = self.gcn(g, feat)
-        # # wall_embed = self.flatten(tf.convert_to_tensor([wall_embed]))
-        # print(wall_embed)
+        src, dst = np.nonzero(wall)
+        g = dgl.graph((src, dst))
+        g = dgl.add_self_loop(g)
+        # feat = torch.from_numpy(np.ones([16 ,16])).float()
+        feat = tf.ones([16,16],tf.float32)
+        wall_embed = self.gcn(g, feat)
+        wall_embed = self.flatten(tf.convert_to_tensor([wall_embed]))
+        print(wall_embed)
         # wall_embed = self.flatten(wall_embed)
         # wall_embeds = tf.repeat(wall_embed, repeats=state.shape[0],axis=0)
 
@@ -67,42 +69,41 @@ class A2CMetaNetwork(tf.keras.Model):
 
         # encode augment
         # print(obs, reward, action_onehot, time, wall_embed, augment)
-        wall_embeds = tf.zeros([state.shape[0],64])
+        # wall_embeds = tf.zeros([state.shape[0],64])
 
 
         # concatenate input
-        input = tf.concat([obs, reward, action_onehot, time, wall_embeds, augment] ,1  )# for gridworld 64+1+4+1+64+33 =
-        # input = tf.convert_to_tensor([input])
+        input = tf.concat([obs, reward, action_onehot, time, wall_embed, augment] ,1  )# for gridworld 64+1+4+1+64+33 =
+        input = tf.convert_to_tensor([input])
 
         # lstm network
         # hidden = tf.convert_to_tensor(hidden)
         # hidden = tf.cast(hidden, dtype=tf.float32)
 
-        out, agent_state = self.lstm_core(input, hidden) # 1, 167 input
+        whole, agent_state_h, agent_state_c = self.lstm_core(input, hidden) # 1,  167 input - 1,1,167
         # output: 1, units
         # out = tf.cast(out ,tf.float32)
 
-
-        # agent_state = [agent_state_c ,agent_state_h]
-        action_soft = self.policy_layer(out)
+        agent_state = [agent_state_h ,agent_state_c]
+        action_soft = self.policy_layer(agent_state_h)
         # action_soft = tf.cast(action_soft, tf.float63
         action_soft_r = np.array(action_soft).astype('float64')
         action_soft_r = action_soft_r / np.sum(action_soft_r)
 
         # print(action_soft)
 
-        value = self.value_layer(out)
+        value = self.value_layer(agent_state_h)
         action = np.random.choice(self.num_actions, p=action_soft_r[0])
         action_onehot = tf.one_hot([action] ,self.num_actions ,dtype=tf.float32) # 1,4
 
         # internal model
-        internal_input = tf.concat([out, action_onehot] ,1)
+        internal_input = tf.concat([agent_state_h, action_onehot] ,1)
         internal_hidden = self.internal_world(internal_input)
         predicted_goal = self.predict_goal(internal_hidden)
         predicted_location = self.predict_location(internal_hidden)
 
         # rollout
-        rollout = self.rollout(out)
+        rollout = self.rollout(agent_state_h)
 
         return action_soft, action, value, agent_state, predicted_goal, predicted_location, rollout
     # [1,16], 1, [1,1], [1,64], [1,16],[1,16],[1,1]
