@@ -105,7 +105,7 @@ class ReplayAgent:
             batch = np.append(batch, elem, axis=0)
         return batch
 
-    def train(self, max_episodes=1):
+    def train(self, max_episodes=21):
         print("Start training")
         starttime = datetime.datetime.now()
         total_reward = []
@@ -203,7 +203,7 @@ class ReplayAgent:
                         reward_batch.append(reward)
                         augment_batch.append(augment)
                         agent_state_batch.append(agent_state)
-                        episode_reward[action[0]] += reward[0][0]
+                        episode_reward[action[0]] += reward[0][0].numpy()
                         predicted_location_batch.append(predicted_location)
                         predicted_goal_batch.append(predicted_goal)
                         true_goal_batch.append(true_goal_batch[-1]) # same goal
@@ -225,6 +225,7 @@ class ReplayAgent:
                     # print(self.env.time)
                     action_soft, action, value, agent_state, predicted_goal, predicted_location, rollout = self.model(
                         state, reward, action_onehot, time / 20000, self.env.wall, augment, agent_state)
+                    # value, predicted_goal, agent_state -> useful
                     # value state
                     value_batch.append(value)
 
@@ -317,12 +318,12 @@ class ReplayAgent:
 
                         total_loss += policy_loss - entropy_loss * 0.05 + value_loss * 0.05 + internal_loss * 0.5
                         # total_loss += policy_loss
-
-                total_loss /= game_length
-                grad = tape.gradient(total_loss, self.model.variables)
-                print(grad)
-                grad, _ = tf.clip_by_global_norm(grad, 50.0)
-                self.opt.apply_gradients(list(zip(grad, self.model.variables)))
+# check gradient**
+                    total_loss /= game_length
+                    grad = tape.gradient(total_loss, self.model.variables)
+                    print(grad)
+                    grad, _ = tf.clip_by_global_norm(grad, 50.0)
+                    self.opt.apply_gradients(list(zip(grad, self.model.variables)))
                 total_losses.append(total_loss)
             episode_rewards = np.sum(episode_reward)
             print('EP{} EpisodeReward={}'.format(ep, episode_rewards))

@@ -49,7 +49,7 @@ class A2CMetaNetwork(tf.keras.Model):
         # if only one batch
 
         ## runable
-        src, dst = np.nonzero(wall)
+        src, dst = np.nonzero(wall) # put outside
         g = dgl.graph((src, dst))
         g = dgl.add_self_loop(g)
         # feat = torch.from_numpy(np.ones([16 ,16])).float()
@@ -95,6 +95,7 @@ class A2CMetaNetwork(tf.keras.Model):
         value = self.value_layer(agent_state_h)
         action = np.random.choice(self.num_actions, p=action_soft_r[0])
         action_onehot = tf.one_hot([action] ,self.num_actions ,dtype=tf.float32) # 1,4
+        # tf uniform sample
 
         # internal model
         internal_input = tf.concat([agent_state_h, action_onehot] ,1)
