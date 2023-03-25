@@ -21,6 +21,28 @@ def make_gif(images, fname, duration=2, true_image=False):
     clip = mpy.VideoClip(make_frame, duration=duration)
     clip.write_gif(fname, fps = len(images) / duration ,verbose=False)
 
+def normalize_adjacency_matrix(adj_matrix):
+    # Compute the degree matrix
+    degree_matrix = np.diag(np.sum(adj_matrix, axis=1))
+
+    # Compute the inverse of the degree matrix
+    inverse_degree_matrix = np.linalg.inv(degree_matrix)
+
+    # Compute the symmetrically normalized adjacency matrix
+    sqrt_inverse_degree_matrix = np.sqrt(inverse_degree_matrix)
+    normalized_adj_matrix = np.dot(np.dot(sqrt_inverse_degree_matrix, adj_matrix), sqrt_inverse_degree_matrix)
+
+    return normalized_adj_matrix
+
+def preprocess_wall(wall, num=1):
+    wall_adj = normalize_adjacency_matrix(wall+np.identity(wall.shape[0]))
+    wall_adj = np.reshape(wall_adj,[1,wall_adj.shape[0], wall_adj.shape[1]])
+    wall_feat = np.ones([1, wall.shape[0],wall.shape[0]])
+    wall_adj = np.repeat(wall_adj, num, axis=0)
+    wall_feat = np.repeat(wall_feat, num, axis=0)
+
+    return wall_feat, wall_adj # batchsize x wall0 x wall1
+
 # def set_image_bandit(values ,probs ,selection ,trial):
 #     bandit_image = Image.open('./resources/bandit.png')
 #     draw = ImageDraw.Draw(bandit_image)
