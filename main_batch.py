@@ -105,7 +105,7 @@ class ReplayAgent:
             batch = np.append(batch, elem, axis=0)
         return batch
 
-    def train(self, max_episodes=51):
+    def train(self, max_episodes=201):
         print("Start training")
         starttime = datetime.datetime.now()
         total_reward = []
@@ -285,7 +285,8 @@ class ReplayAgent:
             # transform variable
             action_onehot_batch = tf.one_hot(action_batch, depth=4)  # 52,1,4
             action_onehot_batch = np.reshape(action_onehot_batch,
-                                             [len(action_onehot_batch), 4])
+                                             [len(action_onehot_batch), 4]).copy()
+
             tg_targets = tf.convert_to_tensor(discounted_reward)
             tg_targets = np.reshape(tg_targets, [tg_targets.shape[0], 1])
             state_batch = np.reshape(state_batch, [len(state_batch), 16])
@@ -294,6 +295,7 @@ class ReplayAgent:
             # state_batch = self.list_to_batch(state_batch)
             reward_batch = self.list_to_batch(reward_batch)
             augment_batch = self.list_to_batch(augment_batch)
+
 
             print("tg_targets", tg_targets)
             # print("value", value_batch)
@@ -331,6 +333,9 @@ class ReplayAgent:
 
                     predicted_goal, predicted_location, rollout = self.internal_world(whole,
                                                                                       action_onehot_batch[1:])
+
+                    entropy_loss = tf.reduce_sum(action_soft * tf.math.log(action_soft))
+
                     loss_fn = tf.keras.losses.MeanSquaredError()
                     value_loss = loss_fn(tg_targets[1:], value)
                     # print("vale gradient",tf.gradients(value_loss,self.model.variables))
@@ -340,20 +345,48 @@ class ReplayAgent:
                     # print("advantage",advantage)
 
                     ce_loss = tf.keras.losses.CategoricalCrossentropy()
+
+                    # mask
+                    # mask_ind -=1
+                    mask_ind = np.nonzero(np.reshape(reward_batch[1:], len(reward_batch[1:])))[0].astype(int)
+                    # action_onehot_batch[mask_ind + 1] = np.zeros(4)
+                    mask = np.ones([action_soft.shape[0],1])
+                    if mask_ind.shape[0] != 0:
+                        mask[mask_ind+1][0] = 0
+                    # print("mask",mask.shape,mask)
+                    ###############################
+                    # print("action_soffff",action_soft)
+                    # action_soft = tf.math.multiply(action_soft,action_mask)
+                    # action_soft[mask_ind] = np.zeros(4)
+                    ###############################
+
                     policy_loss = ce_loss(action_onehot_batch[1:], action_soft,
-                                          sample_weight=advantage)  # current action
-                    print(policy_loss)
+                                          sample_weight=advantage*mask)  # current action
 
                     # print("polic gradient",tf.gradients(policy_loss,self.model.variables))
                     ## entropy loss
-                    entropy_loss = tf.reduce_sum(action_soft * tf.math.log(action_soft))
                     ## internal world loss
                     ce_loss = tf.keras.losses.CategoricalCrossentropy()  # 50,1,16 vs 50,1,16
-                    internal_loss = ce_loss(state_batch[1:], predicted_location) + ce_loss(true_goal_batch[1:],
+
+                    # location_mask = np.ones(predicted_location.shape)
+                    # location_mask[mask_ind] = np.zeros(16)
+                    # predicted_location = tf.math.multiply(predicted_location, location_mask)
+                    # predicted_location[mask_ind] = np.zeros(16)
+                    # state_batch[mask_ind+1] = np.zeros(16)
+
+                    internal_loss = ce_loss(state_batch[1:], predicted_location, sample_weight=mask) + ce_loss(true_goal_batch[1:],
                                                                                               predicted_goal)
 
                     total_loss = policy_loss - entropy_loss * 0.05 + value_loss * 0.05
+                    # total_loss = policy_loss - entropy_loss + value_loss
+                    # total_loss = policy_loss - entropy_loss + value_loss
+
                     internal_total_loss = internal_loss * 0.5
+                    # internal_total_loss = internal_loss
+                    # print("compare: action soft recorded",action_soft_batch)
+                    # print("compare: action soft derived",action_soft)
+
+
                     #
                     # for i in range(game_length):
                     #
@@ -416,11 +449,15 @@ class ReplayAgent:
                     print("internal model variables",self.internal_world.variables)
 
                     total_grad = grad + internal_grad
+                    print("total grad", total_grad)
                     total_variables = self.model.variables + self.internal_world.variables
 
                     self.opt.apply_gradients(list(zip(total_grad, total_variables)))
                     # self.opt.apply_gradients(list(zip(internal_grad, self.internal_world.variables)))
+                print("total",total_loss)
+                print("internal",internal_total_loss)
                 total_total_loss = total_loss+internal_total_loss
+                print("totaltotal",total_total_loss)
                 total_losses.append(total_total_loss)
             episode_rewards = np.sum(episode_reward)
             print('EP{} EpisodeReward={}'.format(ep, episode_rewards))
@@ -445,10 +482,10 @@ class ReplayAgent:
         plt.figure()
         plt.plot(total_reward)
         plt.show()
-        plt.savefig("reward_batch1.jpg")
+        plt.savefig("reward_loss/reward_batch_modify2.jpg")
         plt.figure()
         plt.plot(total_losses)
-        plt.savefig("loss_batch1.jpg")
+        plt.savefig("reward_loss/loss_batch_modify2.jpg")
 
 if __name__ == '__main__':
     gamma = 0.8 # discount

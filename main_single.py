@@ -105,8 +105,13 @@ class ReplayAgent:
             batch = np.append(batch, elem, axis=0)
         return batch
 
-    def train(self, max_episodes=51):
+    def train(self, max_episodes=201):
         print("Start training")
+        # print("environment wall",self.env.wall)
+        # print("environment starting position",self.env.hero.x,self.env.hero.y)
+        # print("environment starting position",self.env.goal.x,self.env.goal.y)
+
+
         starttime = datetime.datetime.now()
         total_reward = []
         total_losses = []
@@ -374,6 +379,8 @@ class ReplayAgent:
                     print("internal model variables",self.internal_world.variables)
 
                     total_grad = grad + internal_grad
+                    print("total grad", total_grad)
+
                     total_variables = self.model.variables + self.internal_world.variables
 
                     self.opt.apply_gradients(list(zip(total_grad, total_variables)))
@@ -403,10 +410,10 @@ class ReplayAgent:
         plt.figure()
         plt.plot(total_reward)
         plt.show()
-        plt.savefig("reward_single1.jpg")
+        plt.savefig("reward_loss/reward_single.jpg")
         plt.figure()
         plt.plot(total_losses)
-        plt.savefig("loss_single1.jpg")
+        plt.savefig("reward_loss/loss_single.jpg")
 
 if __name__ == '__main__':
     gamma = 0.8 # discount

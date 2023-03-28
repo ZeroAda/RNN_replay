@@ -7,7 +7,7 @@ see `requirements.txt`
 ## Training
 
 for batch input:
-`sbatch chenyi.sh` 
+`sbatch chenyi_batch.sh` 
 
 for single input:
 `sbatch chenyi_single.sh`

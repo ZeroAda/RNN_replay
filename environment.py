@@ -108,14 +108,35 @@ class mazeworld():
 
         # randomly set a hero position
         self.hero = gameOb(self.newPosition(0), 1, [0, 0, 1], None, 'hero')
+        # self.hero = gameOb((2,3),1, [0, 0, 1], None, 'hero')
         self.objects.append(self.hero)
 
         # randomly set a goal position
         self.goal = gameOb(self.newPosition(0), 1, [1, 0, 0], 1, 'goal')
+        # self.goal = gameOb((3,2),1, [1, 0, 0], 1, 'goal')
+        self.epi_goal = gameOb((self.goal.x,self.goal.y),1, [1, 0, 0], 1, 'goal')
+
         self.objects.append(self.goal)
 
         # init wall
         self.initWall()
+        # self.wall = np.array([[1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1],
+        #                       [1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1],
+        #                       [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        #                       [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+        #                       [1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1],
+        #                       [1,0,1,1,0,1,1,1,1,1,1,1,1,1,1,1],
+        #                       [1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1],
+        #                       [1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1],
+        #                       [1,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1],
+        #                       [1,1,1,1,1,1,1,1,0,1,1,1,1,0,1,1],
+        #                       [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        #                       [1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1],
+        #                       [0,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1],
+        #                       [1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1],
+        #                       [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        #                       [1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1]])
+
 
         # init timestep
         self.timestep = 0
@@ -136,10 +157,15 @@ class mazeworld():
 
         # randomly set a hero position
         self.hero = gameOb(self.newPosition(0), 1, [0, 0, 1], None, 'hero')
+        # self.hero = gameOb((2,3),1, [0, 0, 1], None, 'hero')
+
         self.objects.append(self.hero)
 
         # randomly set a goal position
-        self.goal = gameOb(self.newPosition(0), 1, [1, 0, 0], 1, 'goal')
+        # self.goal = gameOb(self.newPosition(0), 1, [1, 0, 0], 1, 'goal')
+        self.goal = self.epi_goal
+        # self.goal = gameOb((3,2),1, [1, 0, 0], 1, 'goal')
+
         self.objects.append(self.goal)
 
         hero_ind = self.hero.x * 4 + self.hero.y
